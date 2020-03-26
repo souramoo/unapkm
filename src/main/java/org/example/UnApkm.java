@@ -61,27 +61,25 @@ public class UnApkm {
             PwHash.Alg algo = PwHash.Alg.valueOf(alg);
 
             long opsLimit = (long) byteToInt(getBytes(i, 8));
-            int thirdLong = byteToInt(getBytes(i, 8));
+            int memLimit = byteToInt(getBytes(i, 8));
 
-            if (thirdLong < 0 || thirdLong > 0x20000000) {
-                throw new Exception("lolwut");
+            if (memLimit < 0 || memLimit > 0x20000000) {
+                throw new Exception("too much memory aaah");
             }
-
-            NativeLong memLimit = new NativeLong(thirdLong);
 
             byte[] en = getBytes(i, 8);
             long chunkSize = byteToInt(en);
 
             byte[] salt = getBytes(i, 16);
-            byte[] pwHashbBytes = getBytes(i, 24);
+            byte[] pwHashBytes = getBytes(i, 24);
 
             LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
 
             byte[] outputHash = new byte[32];
-            lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, memLimit, algo);
+            lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, new NativeLong(memLimit), algo);
 
             SecretStream.State state = new SecretStream.State();
-            lazySodium.cryptoSecretStreamInitPull(state, pwHashbBytes, outputHash);
+            lazySodium.cryptoSecretStreamInitPull(state, pwHashBytes, outputHash);
 
 
             long c = chunkSize;
