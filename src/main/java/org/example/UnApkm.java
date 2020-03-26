@@ -48,9 +48,9 @@ public class UnApkm {
         try {
             InputStream i = new FileInputStream(new File(filein));
 
-            byte first = getBytes(i, 1)[0];
-            if (first > 0xff) {
-                throw new Exception("help me what is this");
+            byte magic = getBytes(i, 1)[0];
+            if (magic > 0xff) {
+                throw new Exception("wrong version magic oops");
             }
 
             byte alg = getBytes(i, 1)[0];
