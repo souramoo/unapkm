@@ -10,3 +10,6 @@ Usage:
   java -jar unapkm.jar <path/to/apkm> <path/to/output>
 
 ```
+## Download
+
+Here: https://github.com/souramoo/unapkm/releases
