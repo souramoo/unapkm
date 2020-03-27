@@ -11,31 +11,28 @@ import java.util.Arrays;
 
 public class UnApkm {
 
-    public byte[] getBytes(InputStream i, int num) throws IOException {
+    public static byte[] getBytes(InputStream i, int num) throws IOException {
         byte[] data = new byte[(int) num];
-        int nRead = 0;
-        nRead = i.read(data, 0, data.length);
+        i.read(data, 0, data.length);
         return data;
     }
 
-    int byteToInt(byte[] b) {
-        int v1 = 0, v2 = 0, v3 = 0;
-        int v0 = b.length;
+    public static int byteToInt(byte[] b) {
+        int i = 0, result = 0, shift = 0;
 
-        while (v1 < v0) {
-            byte be = b[v1];
-
-            v2 |= (be & 0xff) << v3;
-
-            v3 += 8;
-            v1 += 1;
+        while (i < b.length) {
+            byte be = b[i];
+            result |= (be & 0xff) << shift;
+            shift += 8;
+            i += 1;
         }
-        return v2;
+
+        return result;
     }
 
     private static final String HEXES = "0123456789ABCDEF";
 
-    static String getHex(byte[] raw) {
+    public static String getHex(byte[] raw) {
         int max = Math.min(100, raw.length);
         final StringBuilder hex = new StringBuilder(2 * max);
         for (int i = 0; i < max; i++) {
@@ -45,7 +42,10 @@ public class UnApkm {
         return hex.toString();
     }
 
-    public UnApkm(String filein, String fileout) {
+    public UnApkm() {
+    }
+
+    public static void decryptFile(String filein, String fileout) {
 
         File file = new File(fileout);
         FileOutputStream fos = null;
@@ -124,11 +124,11 @@ public class UnApkm {
             System.out.println("Usage: java -jar unapkm.jar <input .apkm file> <output.apks file>\n\nDefault output file is <input file>.apks\n\nenjoy!!!");
             return;
         }
-        String f = args[0];
-        String out = f + ".apks";
+        String in = args[0];
+        String out = in + ".apks";
         if (args.length > 1)
             out = args[1];
 
-        new UnApkm(f, out);
+        decryptFile(in, out);
     }
 }
