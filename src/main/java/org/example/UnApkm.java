@@ -15,7 +15,7 @@ public class UnApkm {
     }
 
     private static byte[] getBytes(InputStream i, int num) throws IOException {
-        byte[] data = new byte[(int) num];
+        byte[] data = new byte[num];
         i.read(data, 0, data.length);
         return data;
     }
@@ -34,9 +34,7 @@ public class UnApkm {
     }
 
     private static void copyInputStreamToFile( InputStream in, File file ) {
-        OutputStream out = null;
-        try {
-            out = new FileOutputStream(file);
+        try (OutputStream out = new FileOutputStream(file)) {
             byte[] buf = new byte[1024];
             int len;
             while( ( len = in.read(buf) ) != -1 ){
@@ -44,12 +42,6 @@ public class UnApkm {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            try {
-                in.close();
-                out.close();
-            } catch (IOException ignored) {
-            }
         }
     }
 
@@ -143,8 +135,6 @@ public class UnApkm {
     }
 
     public static void decryptFile(String inFile, String outFile) {
-        FileOutputStream fos = null;
-
         try {
             InputStream i = new FileInputStream(new File(inFile));
             InputStream toOut = decryptStream(i);
