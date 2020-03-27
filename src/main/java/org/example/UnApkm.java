@@ -14,13 +14,13 @@ public class UnApkm {
     private UnApkm() {
     }
 
-    public static byte[] getBytes(InputStream i, int num) throws IOException {
+    private static byte[] getBytes(InputStream i, int num) throws IOException {
         byte[] data = new byte[(int) num];
         i.read(data, 0, data.length);
         return data;
     }
 
-    public static int byteToInt(byte[] b) {
+    private static int byteToInt(byte[] b) {
         int i = 0, result = 0, shift = 0;
 
         while (i < b.length) {
@@ -31,6 +31,26 @@ public class UnApkm {
         }
 
         return result;
+    }
+
+    private static void copyInputStreamToFile( InputStream in, File file ) {
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(file);
+            byte[] buf = new byte[1024];
+            int len;
+            while( ( len = in.read(buf) ) != -1 ){
+                out.write(buf,0,len);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                in.close();
+                out.close();
+            } catch (IOException ignored) {
+            }
+        }
     }
 
     private static final String HEXES = "0123456789ABCDEF";
@@ -45,76 +65,93 @@ public class UnApkm {
         return hex.toString();
     }
 
-    public static void decryptFile(String filein, String fileout) {
+    public static InputStream decryptStream(InputStream i) {
+        final PipedInputStream pipedInputStream = new PipedInputStream();
+        final PipedOutputStream pipedOutputStream = new PipedOutputStream();
 
-        File file = new File(fileout);
+        try {
+            pipedInputStream.connect(pipedOutputStream);
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+
+        Thread pipeWriter = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                    try {
+                        getBytes(i, 1); // skip
+
+                        byte alg = getBytes(i, 1)[0];
+                        if (alg > 2 || alg < 1) {
+                            throw new IOException("incorrect algo");
+                        }
+
+                        PwHash.Alg algo = PwHash.Alg.valueOf(alg);
+
+                        long opsLimit = byteToInt(getBytes(i, 8));
+                        int memLimit = byteToInt(getBytes(i, 8));
+
+                        if (memLimit < 0 || memLimit > 0x20000000) {
+                            throw new IOException("too much memory aaah");
+                        }
+
+                        byte[] en = getBytes(i, 8);
+                        long chunkSize = byteToInt(en);
+
+                        byte[] salt = getBytes(i, 16);
+                        byte[] pwHashBytes = getBytes(i, 24);
+
+                        LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
+
+                        byte[] outputHash = new byte[32];
+                        lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, new NativeLong(memLimit), algo);
+
+                        SecretStream.State state = new SecretStream.State();
+                        lazySodium.cryptoSecretStreamInitPull(state, pwHashBytes, outputHash);
+
+                        long chunkSizePlusPadding = chunkSize + 0x11;
+                        byte[] cipherChunk = new byte[(int) chunkSizePlusPadding];
+
+                        int bytesRead = 0;
+
+                        while ( (bytesRead = i.read(cipherChunk)) != -1) {
+                            int tagSize = 1;
+
+                            byte[] decryptedChunk = new byte[ (int) chunkSize ];
+                            byte[] tag = new byte[tagSize];
+
+                            boolean success = lazySodium.cryptoSecretStreamPull(state, decryptedChunk, tag, cipherChunk, bytesRead);
+
+                            if (!success) {
+                                throw new IOException("decrypto error");
+                            }
+                            pipedOutputStream.write(decryptedChunk);
+                            Arrays.fill(cipherChunk, (byte) 0);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        try {
+                            pipedOutputStream.close();
+                        } catch(IOException ignored) {}
+                    }
+            }
+        });
+
+        pipeWriter.start();
+        return pipedInputStream;
+    }
+
+    public static void decryptFile(String inFile, String outFile) {
         FileOutputStream fos = null;
 
         try {
-            InputStream i = new FileInputStream(new File(filein));
+            InputStream i = new FileInputStream(new File(inFile));
+            InputStream toOut = decryptStream(i);
 
-            getBytes(i, 1); // skip
-
-            byte alg = getBytes(i, 1)[0];
-            if (alg > 2 || alg < 1) {
-                throw new Exception("incorrect algo");
-            }
-
-            PwHash.Alg algo = PwHash.Alg.valueOf(alg);
-
-            long opsLimit = byteToInt(getBytes(i, 8));
-            int memLimit = byteToInt(getBytes(i, 8));
-
-            if (memLimit < 0 || memLimit > 0x20000000) {
-                throw new Exception("too much memory aaah");
-            }
-
-            byte[] en = getBytes(i, 8);
-            long chunkSize = byteToInt(en);
-
-            byte[] salt = getBytes(i, 16);
-            byte[] pwHashBytes = getBytes(i, 24);
-
-            LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
-
-            byte[] outputHash = new byte[32];
-            lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, new NativeLong(memLimit), algo);
-
-            SecretStream.State state = new SecretStream.State();
-            lazySodium.cryptoSecretStreamInitPull(state, pwHashBytes, outputHash);
-
-            long chunkSizePlusPadding = chunkSize + 0x11;
-            byte[] cipherChunk = new byte[(int) chunkSizePlusPadding];
-
-            int bytesRead = 0;
-
-            fos = new FileOutputStream(file);
-
-            while ( (bytesRead = i.read(cipherChunk)) != -1) {
-                int tagSize = 1;
-
-                byte[] decryptedChunk = new byte[ (int) chunkSize ];
-                byte[] tag = new byte[tagSize];
-
-                boolean success = lazySodium.cryptoSecretStreamPull(state, decryptedChunk, tag, cipherChunk, bytesRead);
-
-                if (!success) {
-                    throw new Exception("decrypto error");
-                }
-
-                fos.write(decryptedChunk);
-                Arrays.fill(cipherChunk, (byte) 0);
-            }
-
-        } catch (Exception e) {
+            copyInputStreamToFile(toOut, new File(outFile) );
+        } catch(Exception e) {
             e.printStackTrace();
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                } catch (IOException ignored) {
-                }
-            }
         }
     }
 
