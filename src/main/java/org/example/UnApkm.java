@@ -62,7 +62,7 @@ public class UnApkm {
 
             PwHash.Alg algo = PwHash.Alg.valueOf(alg);
 
-            long opsLimit = (long) byteToInt(getBytes(i, 8));
+            long opsLimit = byteToInt(getBytes(i, 8));
             int memLimit = byteToInt(getBytes(i, 8));
 
             if (memLimit < 0 || memLimit > 0x20000000) {
@@ -112,7 +112,7 @@ public class UnApkm {
             if (fos != null) {
                 try {
                     fos.close();
-                } catch (IOException ex) {
+                } catch (IOException ignored) {
                 }
             }
         }
