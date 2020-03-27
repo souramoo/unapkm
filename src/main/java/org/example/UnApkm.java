@@ -10,6 +10,7 @@ import java.io.*;
 import java.util.Arrays;
 
 public class UnApkm {
+    private static final String HEXES = "0123456789ABCDEF";
 
     private UnApkm() {
     }
@@ -44,8 +45,6 @@ public class UnApkm {
             e.printStackTrace();
         }
     }
-
-    private static final String HEXES = "0123456789ABCDEF";
 
     public static String getHex(byte[] raw) {
         int max = Math.min(100, raw.length);
