@@ -1,4 +1,4 @@
-package org.example;
+package com.souramoo.unapkm;
 
 import com.goterl.lazycode.lazysodium.LazySodiumJava;
 import com.goterl.lazycode.lazysodium.SodiumJava;
@@ -8,9 +8,13 @@ import com.sun.jna.NativeLong;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 public class UnApkm {
     private static final String HEXES = "0123456789ABCDEF";
+    public static final long MEM_LIMIT = 0x20000000;
 
     private UnApkm() {
     }
@@ -32,18 +36,6 @@ public class UnApkm {
         }
 
         return result;
-    }
-
-    private static void copyInputStreamToFile( InputStream in, File file ) {
-        try (OutputStream out = new FileOutputStream(file)) {
-            byte[] buf = new byte[1024];
-            int len;
-            while( ( len = in.read(buf) ) != -1 ){
-                out.write(buf,0,len);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public static String getHex(byte[] raw) {
@@ -68,6 +60,10 @@ public class UnApkm {
     }
 
     public static Header processHeader(InputStream i, LazySodiumJava lazySodium, boolean expensiveOps) throws IOException {
+        return processHeader(i, lazySodium, expensiveOps, MEM_LIMIT);
+    }
+
+    public static Header processHeader(InputStream i, LazySodiumJava lazySodium, boolean expensiveOps, long upperMemLimit) throws IOException {
         getBytes(i, 1); // skip
 
         byte alg = getBytes(i, 1)[0];
@@ -80,7 +76,7 @@ public class UnApkm {
         long opsLimit = byteToInt(getBytes(i, 8));
         int memLimit = byteToInt(getBytes(i, 8));
 
-        if (memLimit < 0 || memLimit > 0x20000000) {
+        if (memLimit < 0 || memLimit > upperMemLimit) {
             throw new IOException("too much memory aaah");
         }
 
@@ -142,7 +138,9 @@ public class UnApkm {
                         Arrays.fill(cipherChunk, (byte) 0);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    if(!e.getMessage().equals("Pipe closed")) {
+                        e.printStackTrace();
+                    }
                 } finally {
                     try {
                         pipedOutputStream.close();
@@ -156,11 +154,30 @@ public class UnApkm {
 
     public static void decryptFile(String inFile, String outFile) {
         try {
-            InputStream i = new FileInputStream(new File(inFile));
-            InputStream toOut = decryptStream(i);
+            InputStream is = new FileInputStream(inFile);
+            InputStream toOut = decryptStream(is);
 
-            copyInputStreamToFile(toOut, new File(outFile) );
-        } catch(Exception e) {
+            // fix zip format if missing end signature
+            ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outFile)));
+            ZipInputStream zipIn = new ZipInputStream(toOut);
+
+            ZipEntry entry = zipIn.getNextEntry();
+
+            while (entry != null) {
+                zos.putNextEntry(new ZipEntry(entry.getName()));
+
+                byte[] bytesIn = new byte[4096];
+                int read;
+                while ((read = zipIn.read(bytesIn)) != -1) {
+                    zos.write(bytesIn, 0, read);
+                }
+                zos.closeEntry();
+                zipIn.closeEntry();
+                entry = zipIn.getNextEntry();
+            }
+            zipIn.close();
+            zos.close();
+        } catch(IOException e) {
             e.printStackTrace();
         }
     }
