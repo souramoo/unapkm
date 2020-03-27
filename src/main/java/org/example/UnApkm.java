@@ -68,7 +68,7 @@ public class UnApkm {
         }
     }
 
-    public static Header processHeader(InputStream i, LazySodiumJava lazySodium) throws IOException {
+    public static Header processHeader(InputStream i, LazySodiumJava lazySodium, boolean expensiveOps) throws IOException {
         getBytes(i, 1); // skip
 
         byte alg = getBytes(i, 1)[0];
@@ -93,14 +93,21 @@ public class UnApkm {
 
 
         byte[] outputHash = new byte[32];
-        lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, new NativeLong(memLimit), algo);
+        if(expensiveOps)
+            lazySodium.cryptoPwHash(outputHash, 32, "#$%@#dfas4d00fFSDF9GSD56$^53$%7WRGF3dzzqasD!@".getBytes(), 0x2d, salt, opsLimit, new NativeLong(memLimit), algo);
 
         return new Header(pwHashBytes, outputHash, chunkSize);
     }
 
     public static InputStream decryptStream(InputStream i) throws IOException {
         LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
-        Header h  = processHeader(i, lazySodium);
+        Header h  = processHeader(i, lazySodium, true);
+        return decryptStream(i, h, lazySodium);
+    }
+
+    public static InputStream decryptStream(InputStream i, Header h) throws IOException {
+        LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
+        processHeader(i, lazySodium, false);
         return decryptStream(i, h, lazySodium);
     }
 
