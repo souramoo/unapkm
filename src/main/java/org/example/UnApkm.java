@@ -118,40 +118,37 @@ public class UnApkm {
         pipedInputStream.connect(pipedOutputStream);
 
 
-        Thread pipeWriter = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                    try {
-                        SecretStream.State state = new SecretStream.State();
-                        lazySodium.cryptoSecretStreamInitPull(state, h.pwHashBytes, h.outputHash);
+        Thread pipeWriter = new Thread(() -> {
+                try {
+                    SecretStream.State state = new SecretStream.State();
+                    lazySodium.cryptoSecretStreamInitPull(state, h.pwHashBytes, h.outputHash);
 
-                        long chunkSizePlusPadding = h.chunkSize + 0x11;
-                        byte[] cipherChunk = new byte[(int) chunkSizePlusPadding];
+                    long chunkSizePlusPadding = h.chunkSize + 0x11;
+                    byte[] cipherChunk = new byte[(int) chunkSizePlusPadding];
 
-                        int bytesRead = 0;
+                    int bytesRead = 0;
 
-                        while ( (bytesRead = i.read(cipherChunk)) != -1) {
-                            int tagSize = 1;
+                    while ( (bytesRead = i.read(cipherChunk)) != -1) {
+                        int tagSize = 1;
 
-                            byte[] decryptedChunk = new byte[ (int) h.chunkSize ];
-                            byte[] tag = new byte[tagSize];
+                        byte[] decryptedChunk = new byte[ (int) h.chunkSize ];
+                        byte[] tag = new byte[tagSize];
 
-                            boolean success = lazySodium.cryptoSecretStreamPull(state, decryptedChunk, tag, cipherChunk, bytesRead);
+                        boolean success = lazySodium.cryptoSecretStreamPull(state, decryptedChunk, tag, cipherChunk, bytesRead);
 
-                            if (!success) {
-                                throw new IOException("decrypto error");
-                            }
-                            pipedOutputStream.write(decryptedChunk);
-                            Arrays.fill(cipherChunk, (byte) 0);
+                        if (!success) {
+                            throw new IOException("decrypto error");
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        try {
-                            pipedOutputStream.close();
-                        } catch(IOException ignored) {}
+                        pipedOutputStream.write(decryptedChunk);
+                        Arrays.fill(cipherChunk, (byte) 0);
                     }
-            }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        pipedOutputStream.close();
+                    } catch(IOException ignored) {}
+                }
         });
 
         pipeWriter.start();
