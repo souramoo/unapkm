@@ -7,6 +7,7 @@ import com.goterl.lazycode.lazysodium.interfaces.SecretStream;
 import com.sun.jna.NativeLong;
 
 import java.io.*;
+import java.util.Arrays;
 
 public class UnApkm {
 
@@ -45,13 +46,14 @@ public class UnApkm {
     }
 
     public UnApkm(String filein, String fileout) {
+
+        File file = new File(fileout);
+        FileOutputStream fos = null;
+
         try {
             InputStream i = new FileInputStream(new File(filein));
 
-            byte magic = getBytes(i, 1)[0];
-            if (magic > 0xff) {
-                throw new Exception("wrong version magic oops");
-            }
+            getBytes(i, 1); // skip
 
             byte alg = getBytes(i, 1)[0];
             if (alg > 2 || alg < 1) {
@@ -81,26 +83,17 @@ public class UnApkm {
             SecretStream.State state = new SecretStream.State();
             lazySodium.cryptoSecretStreamInitPull(state, pwHashBytes, outputHash);
 
-
-            long c = chunkSize;
-
-            long chunkSizePlusPadding = c + 0x11;
+            long chunkSizePlusPadding = chunkSize + 0x11;
             byte[] cipherChunk = new byte[(int) chunkSizePlusPadding];
 
-
-            File file = new File(fileout);
-            FileOutputStream fos = null;
-            fos = new FileOutputStream(file);
             int bytesRead = 0;
-            while (bytesRead != -1) {
-                bytesRead = i.read(cipherChunk);
-                if (bytesRead == -1) break;
 
+            fos = new FileOutputStream(file);
+
+            while ( (bytesRead = i.read(cipherChunk)) != -1) {
                 int tagSize = 1;
 
-                chunkSizePlusPadding = c;
-
-                byte[] decryptedChunk = new byte[(int) chunkSizePlusPadding];
+                byte[] decryptedChunk = new byte[ (int) chunkSize ];
                 byte[] tag = new byte[tagSize];
 
                 boolean success = lazySodium.cryptoSecretStreamPull(state, decryptedChunk, tag, cipherChunk, bytesRead);
@@ -110,18 +103,18 @@ public class UnApkm {
                 }
 
                 fos.write(decryptedChunk);
-
-                for (int j = 0; j < cipherChunk.length; j++) {
-                    cipherChunk[j] = 0;
-                }
-
-            }
-            if (fos != null) {
-                fos.close();
+                Arrays.fill(cipherChunk, (byte) 0);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException ex) {
+                }
+            }
         }
     }
 
