@@ -11,6 +11,9 @@ import java.util.Arrays;
 
 public class UnApkm {
 
+    private UnApkm() {
+    }
+
     public static byte[] getBytes(InputStream i, int num) throws IOException {
         byte[] data = new byte[(int) num];
         i.read(data, 0, data.length);
@@ -40,9 +43,6 @@ public class UnApkm {
             hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
         }
         return hex.toString();
-    }
-
-    public UnApkm() {
     }
 
     public static void decryptFile(String filein, String fileout) {
