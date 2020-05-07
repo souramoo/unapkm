@@ -59,6 +59,10 @@ public class UnApkm {
         }
     }
 
+    public static Header processHeader(InputStream i, LazySodiumJava lazySodium) throws IOException {
+        return processHeader(i, lazySodium, true);
+    }
+
     public static Header processHeader(InputStream i, LazySodiumJava lazySodium, boolean expensiveOps) throws IOException {
         return processHeader(i, lazySodium, expensiveOps, MEM_LIMIT);
     }
@@ -96,7 +100,7 @@ public class UnApkm {
 
     public static InputStream decryptStream(InputStream i) throws IOException {
         LazySodiumJava lazySodium = new LazySodiumJava(new SodiumJava());
-        Header h  = processHeader(i, lazySodium, true);
+        Header h  = processHeader(i, lazySodium);
         return decryptStream(i, h, lazySodium);
     }
 
