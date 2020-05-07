@@ -106,14 +106,14 @@ public class UnApkm {
         return decryptStream(i, h, lazySodium);
     }
 
-    public static InputStream decryptStream(InputStream i, Header h, LazySodiumJava lazySodium) throws IOException {
+    public static InputStream decryptStream(final InputStream i, final Header h, final LazySodiumJava lazySodium) throws IOException {
         final PipedInputStream pipedInputStream = new PipedInputStream();
         final PipedOutputStream pipedOutputStream = new PipedOutputStream();
 
         pipedInputStream.connect(pipedOutputStream);
 
-
-        Thread pipeWriter = new Thread(() -> {
+        Thread pipeWriter = new Thread() {
+            public void run () {
                 try {
                     SecretStream.State state = new SecretStream.State();
                     lazySodium.cryptoSecretStreamInitPull(state, h.pwHashBytes, h.outputHash);
@@ -146,7 +146,8 @@ public class UnApkm {
                         pipedOutputStream.close();
                     } catch(IOException ignored) {}
                 }
-        });
+            }
+        };
 
         pipeWriter.start();
         return pipedInputStream;
