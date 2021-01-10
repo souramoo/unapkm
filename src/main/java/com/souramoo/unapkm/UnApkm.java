@@ -187,6 +187,15 @@ public class UnApkm {
         }
     }
 
+    private static boolean isAlreadyZip(File f) {
+        int fileSignature = 0;
+        try {
+            RandomAccessFile raf = new RandomAccessFile(f, "r");
+            fileSignature = raf.readInt();
+        } catch (IOException e) {
+        }
+        return fileSignature == 0x504B0304 || fileSignature == 0x504B0506 || fileSignature == 0x504B0708;
+    }
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -198,6 +207,9 @@ public class UnApkm {
         if (args.length > 1)
             out = args[1];
 
-        decryptFile(in, out);
+        if(isAlreadyZip(new File(in)))
+            System.out.println("The file at " + in + " appears to already be a regular ZIP file :)");
+        else
+            decryptFile(in, out);
     }
 }
