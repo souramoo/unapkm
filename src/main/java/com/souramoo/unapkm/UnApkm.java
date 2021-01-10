@@ -208,7 +208,7 @@ public class UnApkm {
             out = args[1];
 
         if(isAlreadyZip(new File(in)))
-            System.out.println("The file at " + in + " appears to already be a regular ZIP file :)");
+            System.out.println("The file at " + in + " appears to already be a regular ZIP file :)\n\nYou can just rename this to .apks and install with SAI or similar, no decryption with this tool is required.");
         else
             decryptFile(in, out);
     }
